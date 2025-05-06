@@ -6,17 +6,21 @@ import {
   BookResponseData,
   Category,
   CategoryResponseData,
+  CreateUserPayload,
+  CreateUserResponse,
   DashboardStats,
   FeedbackResponseData,
+  GetUsersResponse,
   LoginCredentials,
   PhysicalStock,
   User,
+  UserResponseData,
 } from "@/types";
 
 // This would be replaced with the actual API base URL
 const API_BASE_URL = "http://libms.laravel-sail.site:8080/api";
 
-const apiClient = axios.create({
+export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
@@ -50,45 +54,39 @@ export const logoutUser = async (): Promise<ApiResponse<null>> => {
 };
 
 // User APIs
-export const getUsers = async (): Promise<ApiResponse<User[]>> => {
-  if (process.env.NODE_ENV === "development") {
-    return Promise.resolve({
-      status: "success",
-      data: mockUsers,
-    });
-  }
-
-  const response = await apiClient.get("/users");
-  return response.data;
+export const getUsers = async (
+  page: number = 1,
+  per_page: number = 10,
+  search?: string
+): Promise<GetUsersResponse> => {
+  const response = await apiClient.get<UserResponseData>("/v1/users", {
+    params: { page, per_page, search },
+  });
+  return {
+    status: "success",
+    data: response.data.data,
+    meta: response.data.meta,
+  };
 };
 
 export const createUser = async (
-  user: Omit<User, "id" | "created_at">
-): Promise<ApiResponse<User>> => {
-  const response = await apiClient.post("/users", user);
-  return response.data;
-};
-
-export const updateUser = async (
-  id: number,
-  user: Partial<User>
-): Promise<ApiResponse<User>> => {
-  const response = await apiClient.put(`/users/${id}`, user);
-  return response.data;
-};
-
-export const deleteUser = async (id: number): Promise<ApiResponse<null>> => {
-  const response = await apiClient.delete(`/users/${id}`);
+  payload: CreateUserPayload
+): Promise<CreateUserResponse> => {
+  const response = await apiClient.post<CreateUserResponse>(
+    "/v1/users",
+    payload
+  );
   return response.data;
 };
 
 // Book APIs
 export const getBooks = async (
   page: number = 1,
-  per_page: number = 10
+  per_page: number = 10,
+  search?: string
 ): Promise<BookResponseData> => {
   const response = await apiClient.get("/v1/books", {
-    params: { page, per_page },
+    params: { page, per_page, search },
   });
   return response.data;
 };

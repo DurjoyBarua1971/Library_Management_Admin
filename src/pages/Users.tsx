@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from 'react';
-import { User } from '@/types';
-import { getUsers, createUser, updateUser, deleteUser } from '@/lib/api';
+import { User, CreateUserPayload } from '@/types';
+import { getUsers, createUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,12 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Table,
   TableBody,
@@ -34,302 +27,314 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, PenLine, Plus, Search, Trash, User as UserIcon, Users as UsersIcon } from 'lucide-react';
+import { Plus, Search, Users as UsersIcon } from 'lucide-react';
 import { format } from 'date-fns';
+
+import { FormMessage } from '@/components/ui/form';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { useDebounce } from '@/lib/utils';
+
+const UserHeader = ({ onAddUser }: { onAddUser: () => void }) => (
+  <div className="flex justify-between items-center">
+    <div>
+      <h1 className="text-3xl font-serif font-bold mb-2">Users</h1>
+      <p className="text-muted-foreground">Manage system users</p>
+    </div>
+    <Button onClick={onAddUser}>
+      <Plus className="h-4 w-4 mr-2" />
+      Add User
+    </Button>
+  </div>
+);
+
+const UserSearch = ({ searchQuery, setSearchQuery }: { searchQuery: string; setSearchQuery: (query: string) => void }) => (
+  <div className="flex items-center gap-4">
+    <div className="relative flex-1">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="Search users..."
+        className="pl-10"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
+    </div>
+  </div>
+);
+
+const UserTable = ({
+  users,
+  loading,
+  paginationMeta,
+  currentPage,
+  setCurrentPage,
+}: {
+  users: User[];
+  loading: boolean;
+  paginationMeta: { current_page: number; last_page: number; per_page: number; total: number };
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+}) => (
+  <div className="space-y-4">
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Created</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-goodreads-purple mx-auto"></div>
+                <p className="mt-2 text-muted-foreground">Loading users...</p>
+              </TableCell>
+            </TableRow>
+          ) : users.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center py-8">
+                <UsersIcon className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="mt-2 text-muted-foreground">No users found</p>
+              </TableCell>
+            </TableRow>
+          ) : (
+            users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">{user.name}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                    }`}
+                  >
+                    {user.role}
+                  </span>
+                </TableCell>
+                <TableCell>{format(new Date(user.created_at), 'MMM d, yyyy')}</TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+    {paginationMeta.last_page > 1 && (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => setCurrentPage(currentPage - 1)}
+              className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+          {Array.from({ length: paginationMeta.last_page }, (_, i) => i + 1).map((page) => (
+            <PaginationItem key={page}>
+              <PaginationLink
+                onClick={() => setCurrentPage(page)}
+                isActive={page === currentPage}
+              >
+                {page}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => setCurrentPage(currentPage + 1)}
+              className={currentPage === paginationMeta.last_page ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    )}
+  </div>
+);
 
 const Users = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  
-  // Form state
-  const [userForm, setUserForm] = useState({
+  const [currentPage, setCurrentPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+  });
+  const [userForm, setUserForm] = useState<CreateUserPayload>({
     name: '',
     email: '',
     password: '',
-    role: 'user' as 'admin' | 'user',
+    role: 'user',
   });
-  
+  const [errors, setErrors] = useState<Partial<Record<keyof CreateUserPayload, string>>>({});
+
   const { toast } = useToast();
-  
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        const response = await getUsers();
-        
-        if (response.status === 'success') {
-          setUsers(response.data);
-        }
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch users',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchUsers();
-  }, [toast]);
-  
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   const resetForm = () => {
-    setUserForm({
-      name: '',
-      email: '',
-      password: '',
-      role: 'user',
-    });
-    setIsEditMode(false);
-    setSelectedUser(null);
+    setUserForm({ name: '', email: '', password: '', role: 'user' });
+    setErrors({});
   };
-  
-  const openEditDialog = (user: User) => {
-    setIsEditMode(true);
-    setSelectedUser(user);
-    setUserForm({
-      name: user.name,
-      email: user.email,
-      password: '', // We don't show the password when editing
-      role: user.role,
-    });
-    setIsDialogOpen(true);
+
+  const isFormValid = (): boolean => {
+    return (
+      userForm.name.trim() &&
+      userForm.email.trim() &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email) &&
+      userForm.role !== undefined
+    );
   };
-  
+
+  const validateForm = (): boolean => {
+    const newErrors: Partial<Record<keyof CreateUserPayload, string>> = {};
+    if (!userForm.name.trim()) newErrors.name = 'Name is required';
+    if (!userForm.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) {
+      newErrors.email = 'Please enter a valid email';
+    }
+    if (!userForm.role) newErrors.role = 'Role is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const fetchUsers = async (page: number, perPage: number, search?: string) => {
+    try {
+      setLoading(true);
+      const response = await getUsers(page, perPage, search);
+      if (response.status === 'success') {
+        setUsers(response.data);
+        setPaginationMeta({
+          current_page: response.meta.current_page,
+          last_page: response.meta.last_page,
+          per_page: response.meta.per_page,
+          total: response.meta.total,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch users',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers(currentPage, 10, debouncedSearchQuery);
+  }, [currentPage, debouncedSearchQuery]);
+
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
     try {
-      let response;
-      
-      if (isEditMode && selectedUser) {
-        // When updating, only include password if it's not empty
-        const payload = {
-          name: userForm.name,
-          email: userForm.email,
-          role: userForm.role,
-          ...(userForm.password ? { password: userForm.password } : {}),
-        };
-        response = await updateUser(selectedUser.id, payload);
-      } else {
-        response = await createUser(userForm);
-      }
-      
-      if (response.status === 'success') {
-        // Refresh the users list
-        const refreshResponse = await getUsers();
-        if (refreshResponse.status === 'success') {
-          setUsers(refreshResponse.data);
-        }
-        
+      const payload: CreateUserPayload = {
+        name: userForm.name,
+        email: userForm.email,
+        role: userForm.role,
+        ...(userForm.password ? { password: userForm.password } : {}),
+      };
+      const response = await createUser(payload);
+      if (response.user) {
+        await fetchUsers(1, 10, debouncedSearchQuery);
+        setCurrentPage(1);
         toast({
           title: 'Success',
-          description: isEditMode ? 'User updated successfully' : 'User created successfully',
+          description: 'User created successfully',
         });
-        
         setIsDialogOpen(false);
-        resetForm();
       }
     } catch (error) {
-      console.error('Error saving user:', error);
+      console.error('Error creating user:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save user',
+        description: 'Failed to create user',
         variant: 'destructive',
       });
     }
   };
-  
-  const handleDelete = async (id: number) => {
-    try {
-      const response = await deleteUser(id);
-      if (response.status === 'success') {
-        setUsers(users.filter(user => user.id !== id));
-        toast({
-          title: 'Success',
-          description: 'User deleted successfully',
-        });
-      }
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete user',
-        variant: 'destructive',
+
+  const handleFieldChange = (field: keyof CreateUserPayload, value: string) => {
+    setUserForm({ ...userForm, [field]: value });
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
       });
     }
   };
-  
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-serif font-bold mb-2">Users</h1>
-          <p className="text-muted-foreground">Manage system users</p>
-        </div>
-        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search users..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-      
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-goodreads-purple mx-auto"></div>
-                  <p className="mt-2 text-muted-foreground">Loading users...</p>
-                </TableCell>
-              </TableRow>
-            ) : filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  <UsersIcon className="h-8 w-8 mx-auto text-muted-foreground" />
-                  <p className="mt-2 text-muted-foreground">No users found</p>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </TableCell>
-                  <TableCell>{format(new Date(user.created_at), 'MMM d, yyyy')}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(user)}>
-                          <PenLine className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              <Trash className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete this user account.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(user.id)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      
-      {/* Add/Edit User Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <UserHeader onAddUser={() => setIsDialogOpen(true)} />
+      <UserSearch searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <UserTable
+        users={users}
+        loading={loading}
+        paginationMeta={paginationMeta}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+      />
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? 'Edit User' : 'Add New User'}</DialogTitle>
-            <DialogDescription>
-              {isEditMode
-                ? "Update the user details."
-                : "Add a new user to the system."}
-            </DialogDescription>
+            <DialogTitle>Add New User</DialogTitle>
+            <DialogDescription>Add a new user to the system.</DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
                 value={userForm.name}
-                onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                onChange={(e) => handleFieldChange('name', e.target.value)}
                 placeholder="Enter user name"
               />
+              {errors.name && <FormMessage>{errors.name}</FormMessage>}
             </div>
-            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={userForm.email}
-                onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                onChange={(e) => handleFieldChange('email', e.target.value)}
                 placeholder="Enter email address"
               />
+              {errors.email && <FormMessage>{errors.email}</FormMessage>}
             </div>
-            
             <div className="space-y-2">
-              <Label htmlFor="password">{isEditMode ? 'New Password (leave blank to keep current)' : 'Password'}</Label>
+              <Label htmlFor="password">Password (optional)</Label>
               <Input
                 id="password"
                 type="password"
                 value={userForm.password}
-                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                placeholder={isEditMode ? "Enter new password (optional)" : "Enter password"}
-                required={!isEditMode}
+                onChange={(e) => handleFieldChange('password', e.target.value)}
+                placeholder="Enter password"
               />
             </div>
-            
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select
                 value={userForm.role}
-                onValueChange={(value) => setUserForm({ ...userForm, role: value as 'admin' | 'user' })}
+                onValueChange={(value) => handleFieldChange('role', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select role" />
@@ -339,15 +344,15 @@ const Users = () => {
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.role && <FormMessage>{errors.role}</FormMessage>}
             </div>
           </div>
-          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>
-              {isEditMode ? 'Update User' : 'Add User'}
+            <Button onClick={handleSubmit} disabled={!isFormValid()}>
+              Add User
             </Button>
           </DialogFooter>
         </DialogContent>

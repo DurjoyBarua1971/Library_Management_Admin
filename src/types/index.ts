@@ -2,8 +2,39 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: "admin" | "user";
+  role: "user" | "admin";
   created_at: string;
+  updated_at: string;
+}
+
+export interface UserResponseData {
+  data: User[];
+  meta: {
+    current_page: number;
+    from: number | null;
+    last_page: number;
+    per_page: number;
+    to: number | null;
+    total: number;
+  };
+}
+
+export interface GetUsersResponse {
+  status: 'success';
+  data: User[];
+  meta: UserResponseData['meta'];
+}
+
+export interface CreateUserPayload {
+  name: string;
+  email: string;
+  password?: string;
+  role: "user" | "admin";
+}
+
+export interface CreateUserResponse {
+  message: string;
+  user: User;
 }
 
 export interface Book {
@@ -49,7 +80,6 @@ export interface FeedbackResponseData {
     to: number;
   };
 }
-
 
 export interface BookResponseData {
   data: Book[];

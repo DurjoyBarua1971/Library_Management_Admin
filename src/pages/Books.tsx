@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { Book } from "@/types";
-import {
-  getBooks,
-} from "@/lib/api";
+import { getBooks } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import BookHeader from "@/components/Book/BookHeader";
 import BookSearch from "@/components/Book/BookSearch";
 import BookTabs from "@/components/Book/BookTabs";
 import CreateBookDialog from "@/components/Book/CreateBookDialog";
+import { useDebounce } from "@/lib/utils";
 
 const Books = () => {
   const [books, setBooks] = useState<Book[]>([]);
@@ -24,12 +23,17 @@ const Books = () => {
   });
 
   const { toast } = useToast();
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   useEffect(() => {
     const fetchBooks = async () => {
       try {
         setLoading(true);
-        const booksResponse = await getBooks(currentPage, 10);
+        const booksResponse = await getBooks(
+          currentPage,
+          10,
+          debouncedSearchQuery || undefined
+        );
         if (booksResponse) {
           setBooks(booksResponse.data);
           setPaginationMeta(booksResponse.meta);
@@ -49,14 +53,19 @@ const Books = () => {
     };
 
     fetchBooks();
-  }, [toast, currentPage]);
+  }, [toast, currentPage, debouncedSearchQuery]);
 
   const handleSubmit = async (flag: boolean) => {
     try {
-      const refreshResponse = await getBooks(1, 10);
+      const refreshResponse = await getBooks(
+        1,
+        10,
+        debouncedSearchQuery || undefined
+      );
       if (refreshResponse) {
         setBooks(refreshResponse.data);
         setPaginationMeta(refreshResponse.meta);
+        setCurrentPage(1); // Reset to page 1 after creating/updating
       } else {
         throw new Error("Failed to refresh books");
       }
@@ -67,6 +76,7 @@ const Books = () => {
           : "Book created successfully",
       });
     } catch (error) {
+      console.error("Error refreshing books:", error);
       toast({
         title: "Error",
         description: "Failed to save book",
@@ -74,15 +84,6 @@ const Books = () => {
       });
     }
   };
-
-  const filteredBooks = books.filter(
-    (book) =>
-      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (book.description?.toLowerCase() || "").includes(
-        searchQuery.toLowerCase()
-      )
-  );
 
   return (
     <div className="space-y-6">
@@ -93,7 +94,7 @@ const Books = () => {
       />
       <BookSearch searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <BookTabs
-        books={filteredBooks}
+        books={books}
         loading={loading}
         paginationMeta={paginationMeta}
         currentPage={currentPage}
@@ -102,7 +103,7 @@ const Books = () => {
       <CreateBookDialog
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        onSuccess={handleSubmit}
+        onSuccess={() => handleSubmit(false)}
       />
     </div>
   );

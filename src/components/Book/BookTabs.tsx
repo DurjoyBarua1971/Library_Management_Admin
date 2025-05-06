@@ -14,10 +14,6 @@ interface BookTabsProps {
   };
   currentPage: number;
   setCurrentPage: (page: number) => void;
-  onEditBook: (book: Book) => void;
-  onDeleteBook: (id: number) => Promise<boolean>;
-  onViewBook: (id: number) => void;
-  isDeleting: boolean;
 }
 
 const BookTabs = ({
@@ -26,20 +22,12 @@ const BookTabs = ({
   paginationMeta,
   currentPage,
   setCurrentPage,
-  onEditBook,
-  onDeleteBook,
-  onViewBook,
-  isDeleting,
 }: BookTabsProps) => {
   return (
     <div>
       <BookTableView
         books={books}
         loading={loading}
-        onEditBook={onEditBook}
-        onDeleteBook={onDeleteBook}
-        onViewBook={onViewBook}
-        isDeleting={isDeleting}
       />
       {books.length > 0 && (
         <PaginationControls

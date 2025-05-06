@@ -1,18 +1,21 @@
-import { Book } from '@/types';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookOpen, File } from 'lucide-react';
-import BookActions from './BookActions';
+import { Book } from "@/types";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { BookOpen, File } from "lucide-react";
+import BookActions from "./BookActions";
 
 interface BookTableViewProps {
   books: Book[];
   loading: boolean;
-  onEditBook: (book: Book) => void;
-  onDeleteBook: (id: number) => Promise<boolean>;
-  onViewBook: (id: number) => void;
-  isDeleting: boolean;
 }
 
-const BookTableView = ({ books, loading, onEditBook, onDeleteBook, onViewBook, isDeleting }: BookTableViewProps) => {
+const BookTableView = ({ books, loading }: BookTableViewProps) => {
   return (
     <div className="rounded-md border">
       <Table>
@@ -61,13 +64,7 @@ const BookTableView = ({ books, loading, onEditBook, onDeleteBook, onViewBook, i
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <BookActions
-                    book={book}
-                    onEditBook={onEditBook}
-                    onDeleteBook={onDeleteBook}
-                    onViewBook={onViewBook}
-                    isDeleting={isDeleting}
-                  />
+                  <BookActions book={book} />
                 </TableCell>
               </TableRow>
             ))

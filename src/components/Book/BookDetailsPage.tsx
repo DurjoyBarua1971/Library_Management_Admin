@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Book, Feedback } from "@/types";
-import { getBook, getFeedback } from "@/lib/api";
+import { getBook, getFeedback, deleteBook } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import PaginationControls from "./PaginationControls";
 import { BookDetails } from "./BookDetails";
 import { FeedbackTable } from "./FeedbackTable";
+import EditBookDialog from "./EditBookDialog";
+
 
 const BookDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Centralized state for book and feedback
   const [state, setState] = useState<{
     book: Book | null;
     feedback: Feedback[];
@@ -26,10 +31,12 @@ const BookDetailsPage = () => {
     loading: {
       book: boolean;
       feedback: boolean;
+      delete: boolean;
     };
     error: {
       book: string | null;
       feedback: string | null;
+      delete: string | null;
     };
   }>({
     book: null,
@@ -45,10 +52,12 @@ const BookDetailsPage = () => {
     loading: {
       book: true,
       feedback: true,
+      delete: false,
     },
     error: {
       book: null,
       feedback: null,
+      delete: null,
     },
   });
 
@@ -129,6 +138,62 @@ const BookDetailsPage = () => {
     fetchFeedback();
   }, [id, currentPage, toast, navigate]);
 
+  const handleDelete = async () => {
+    try {
+      setState((prev) => ({
+        ...prev,
+        loading: { ...prev.loading, delete: true },
+        error: { ...prev.error, delete: null },
+      }));
+      const response = await deleteBook(Number(id));
+      if (response) {
+        toast({
+          title: "Success",
+          description: "Book deleted successfully",
+        });
+        navigate("/books");
+      } else {
+        throw new Error("Failed to delete book");
+      }
+    } catch (error) {
+      console.error("Error deleting book:", error);
+      setState((prev) => ({
+        ...prev,
+        error: { ...prev.error, delete: "Failed to delete book" },
+      }));
+      toast({
+        title: "Error",
+        description: "Failed to delete book",
+        variant: "destructive",
+      });
+    } finally {
+      setState((prev) => ({
+        ...prev,
+        loading: { ...prev.loading, delete: false },
+      }));
+    }
+  };
+
+  const handleEditSuccess = () => {
+    // Refresh book data after edit
+    const fetchBook = async () => {
+      try {
+        const response = await getBook(Number(id));
+        if (response?.data) {
+          setState((prev) => ({ ...prev, book: response.data }));
+        }
+      } catch (error) {
+        console.error("Error refreshing book:", error);
+        toast({
+          title: "Error",
+          description: "Failed to refresh book details",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchBook();
+  };
+
   if (state.loading.book || !state.book) {
     return (
       <div className="flex justify-center py-8">
@@ -145,7 +210,11 @@ const BookDetailsPage = () => {
           Back to Books
         </Button>
       </div>
-      <BookDetails book={state.book} />
+      <BookDetails
+        book={state.book}
+        onEdit={() => setIsEditDialogOpen(true)}
+        onDelete={handleDelete}
+      />
       <FeedbackTable
         feedback={state.feedback}
         feedbackLoading={state.loading.feedback}
@@ -158,6 +227,12 @@ const BookDetailsPage = () => {
           itemCount={state.feedback.length}
         />
       )}
+      <EditBookDialog
+        isOpen={isEditDialogOpen}
+        setIsOpen={setIsEditDialogOpen}
+        book={state.book}
+        onSuccess={handleEditSuccess}
+      />
     </div>
   );
 };

@@ -5,17 +5,12 @@ import { Eye } from 'lucide-react';
 
 interface BookActionsProps {
   book: Book;
-  onEditBook: (book: Book) => void;
-  onDeleteBook: (id: number) => Promise<boolean>;
-  onViewBook: (id: number) => void;
-  isDeleting: boolean;
 }
 
-const BookActions = ({ book, onViewBook }: BookActionsProps) => {
+const BookActions = ({ book }: BookActionsProps) => {
   const navigate = useNavigate();
 
   const handleView = () => {
-    onViewBook(book.id);
     navigate(`/books/${book.id}`);
   };
 

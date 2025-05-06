@@ -58,7 +58,7 @@ const BookFormDialog = ({
           <DialogDescription>
             {isEditMode
               ? 'Update the book details in the library catalog.'
-              : 'Add a new book to the library catalog.'}
+              : 'Add a new book library catalog.'}
           </DialogDescription>
         </DialogHeader>
         {isEditLoading ? (

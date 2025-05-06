@@ -13,9 +13,11 @@ export interface Book {
   author: string;
   ebook: string;
   hasPhysical: number;
-  bookLoan?: BookLoan[];
+  bookLoans?: BookLoan[];
   quantity?: number;
   category: string;
+  categoryId?: number;
+  category_id?: number;
   createdAt?: string;
 }
 

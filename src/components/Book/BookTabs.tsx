@@ -1,6 +1,4 @@
 import { Book } from '@/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import BookGridView from './BookGridView';
 import BookTableView from './BookTableView';
 import PaginationControls from './PaginationControls';
 
@@ -34,48 +32,24 @@ const BookTabs = ({
   isDeleting,
 }: BookTabsProps) => {
   return (
-    <Tabs defaultValue="grid">
-      <TabsList className="mb-4">
-        <TabsTrigger value="grid">Grid View</TabsTrigger>
-        <TabsTrigger value="table">Table View</TabsTrigger>
-      </TabsList>
-      <TabsContent value="grid">
-        <BookGridView
-          books={books}
-          loading={loading}
-          onEditBook={onEditBook}
-          onDeleteBook={onDeleteBook}
-          onViewBook={onViewBook}
-          isDeleting={isDeleting}
+    <div>
+      <BookTableView
+        books={books}
+        loading={loading}
+        onEditBook={onEditBook}
+        onDeleteBook={onDeleteBook}
+        onViewBook={onViewBook}
+        isDeleting={isDeleting}
+      />
+      {books.length > 0 && (
+        <PaginationControls
+          paginationMeta={paginationMeta}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          itemCount={books.length}
         />
-        {books.length > 0 && (
-          <PaginationControls
-            paginationMeta={paginationMeta}
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
-            itemCount={books.length}
-          />
-        )}
-      </TabsContent>
-      <TabsContent value="table">
-        <BookTableView
-          books={books}
-          loading={loading}
-          onEditBook={onEditBook}
-          onDeleteBook={onDeleteBook}
-          onViewBook={onViewBook}
-          isDeleting={isDeleting}
-        />
-        {books.length > 0 && (
-          <PaginationControls
-            paginationMeta={paginationMeta}
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
-            itemCount={books.length}
-          />
-        )}
-      </TabsContent>
-    </Tabs>
+      )}
+    </div>
   );
 };
 

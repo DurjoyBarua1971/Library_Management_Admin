@@ -13,6 +13,7 @@ export interface Book {
   author: string;
   ebook: string;
   hasPhysical: number;
+  bookLoan?: BookLoan[];
   quantity?: number;
   category: string;
   createdAt?: string;
@@ -43,6 +44,7 @@ export interface FeedbackResponseData {
     last_page: number;
     per_page: number;
     total: number;
+    to: number;
   };
 }
 

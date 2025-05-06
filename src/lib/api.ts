@@ -7,7 +7,6 @@ import {
   Category,
   CategoryResponseData,
   DashboardStats,
-  Feedback,
   FeedbackResponseData,
   LoginCredentials,
   PhysicalStock,

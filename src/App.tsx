@@ -15,6 +15,7 @@ import PhysicalStock from "./pages/PhysicalStock";
 import BookRequests from "./pages/BookRequests";
 import BookLoans from "./pages/BookLoans";
 import NotFound from "./pages/NotFound";
+import BookDetailsPage from "./components/Book/BookDetailsPage";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="books" element={<Books />} />
+              <Route path="books/:id" element={<BookDetailsPage />} />
               <Route path="users" element={<Users />} />
               <Route path="categories" element={<Categories />} />
               <Route path="stock" element={<PhysicalStock />} />

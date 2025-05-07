@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, Calendar, Clock, Users } from 'lucide-react';
+import { BookOpen, Calendar, Users } from 'lucide-react';
 import { DashboardStats } from '@/types';
 import { getDashboardStats } from '@/lib/api';
 import {
@@ -27,7 +26,7 @@ const Dashboard = () => {
       try {
         setLoading(true);
         const response = await getDashboardStats();
-        if (response.status === 'success') {
+        if (response) {
           setStats(response.data);
         } else {
           setError('Failed to fetch dashboard stats');
@@ -84,7 +83,7 @@ const Dashboard = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalUsers}</div>
+            <div className="text-2xl font-bold">{stats?.total_users}</div>
             <p className="text-xs text-muted-foreground">Registered users in the system</p>
           </CardContent>
         </Card>
@@ -94,28 +93,38 @@ const Dashboard = () => {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalBooks}</div>
+            <div className="text-2xl font-bold">{stats?.total_books}</div>
             <p className="text-xs text-muted-foreground">Books in the library catalog</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Current Loans</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Physical Books</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.currentLoans}</div>
-            <p className="text-xs text-muted-foreground">Active book loans</p>
+            <div className="text-2xl font-bold">{stats?.physical_books}</div>
+            <p className="text-xs text-muted-foreground">Physical books available</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Overdue Books</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">E-books</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.overdueBooks}</div>
-            <p className="text-xs text-muted-foreground">Books past their due date</p>
+            <div className="text-2xl font-bold">{stats?.ebooks}</div>
+            <p className="text-xs text-muted-foreground">Digital books available</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.active_loans}</div>
+            <p className="text-xs text-muted-foreground">Active book loans</p>
           </CardContent>
         </Card>
       </div>
@@ -123,13 +132,13 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Borrowing Trend</CardTitle>
+            <CardTitle>Borrowing Trend (Last 7 Days)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
-                  data={stats?.borrowingTrend}
+                  data={stats?.last_seven_days_loans.data}
                   margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                 >
                   <defs>
@@ -139,7 +148,7 @@ const Dashboard = () => {
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="date" />
-                  <YAxis />
+                  <YAxis domain={[0, stats?.last_seven_days_loans.max_count || 6]} />
                   <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
                   <Tooltip />
                   <Area
@@ -164,7 +173,7 @@ const Dashboard = () => {
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={stats?.mostBorrowed}
+                  data={stats?.top_borrowed_books.data.map(book => ({ ...book, count: book.totalBorrows }))}
                   layout="vertical"
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
@@ -182,18 +191,6 @@ const Dashboard = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Book Requests</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* This would be populated from the API */}
-            <p className="text-center text-muted-foreground py-4">No pending requests at the moment.</p>
           </CardContent>
         </Card>
       </div>

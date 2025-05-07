@@ -12,10 +12,10 @@ import Books from "./pages/Books";
 import Users from "./pages/Users";
 import Categories from "./pages/Categories";
 import PhysicalStock from "./pages/PhysicalStock";
-import BookRequests from "./pages/BookRequests";
 import BookLoans from "./pages/BookLoans";
 import NotFound from "./pages/NotFound";
 import BookDetailsPage from "./components/Book/BookDetailsPage";
+import DateExtension from "./pages/DateExtension";
 
 const queryClient = new QueryClient();
 
@@ -35,7 +35,7 @@ const App = () => (
               <Route path="users" element={<Users />} />
               <Route path="categories" element={<Categories />} />
               <Route path="stock" element={<PhysicalStock />} />
-              <Route path="requests" element={<BookRequests />} />
+              <Route path="extension" element={<DateExtension />} />
               <Route path="loans" element={<BookLoans />} />
             </Route>
             <Route path="*" element={<NotFound />} />

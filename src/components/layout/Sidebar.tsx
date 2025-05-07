@@ -41,9 +41,9 @@ export const Sidebar = () => {
     { to: "/books", icon: Book, label: "Books" },
     { to: "/users", icon: Users, label: "Users" },
     { to: "/categories", icon: FolderOpen, label: "Categories" },
-    { to: "/stock", icon: Package, label: "Physical Stock" },
-    { to: "/requests", icon: BookOpen, label: "Book Requests" },
-    { to: "/loans", icon: Calendar, label: "Book Loans" }
+    { to: "/stock", icon: Package, label: "Physical Stock" },    
+    { to: "/loans", icon: Calendar, label: "Book Loans" },
+    { to: "/extension", icon: BookOpen, label: "Due Date Extensions" }
   ];
 
   return (

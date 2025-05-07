@@ -1,3 +1,20 @@
+// ==========================
+// 🔐 Auth Related Types
+// ==========================
+export type LoginCredentials = {
+  email: string;
+  password: string;
+};
+
+export type ApiResponse<T> = {
+  data: T;
+  message?: string;
+  status: "success" | "error";
+};
+
+// ==========================
+// 👤 User Related Types
+// ==========================
 export interface User {
   id: number;
   name: string;
@@ -5,6 +22,18 @@ export interface User {
   role: "user" | "admin";
   created_at: string;
   updated_at: string;
+}
+
+export interface CreateUserPayload {
+  name: string;
+  email: string;
+  password?: string;
+  role: "user" | "admin";
+}
+
+export interface CreateUserResponse {
+  message: string;
+  user: User;
 }
 
 export interface UserResponseData {
@@ -20,23 +49,14 @@ export interface UserResponseData {
 }
 
 export interface GetUsersResponse {
-  status: 'success';
+  status: "success";
   data: User[];
-  meta: UserResponseData['meta'];
+  meta: UserResponseData["meta"];
 }
 
-export interface CreateUserPayload {
-  name: string;
-  email: string;
-  password?: string;
-  role: "user" | "admin";
-}
-
-export interface CreateUserResponse {
-  message: string;
-  user: User;
-}
-
+// ==========================
+// 📚 Book Related Types
+// ==========================
 export interface Book {
   id: number;
   title: string;
@@ -45,6 +65,7 @@ export interface Book {
   ebook: string;
   hasPhysical: number;
   bookLoans?: BookLoan[];
+  loanCount?: number;
   quantity?: number;
   category: string;
   categoryId?: number;
@@ -52,6 +73,20 @@ export interface Book {
   createdAt?: string;
 }
 
+export interface BookResponseData {
+  data: Book[];
+  meta: {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+// ==========================
+// 💬 Feedback Related Types
+// ==========================
 export interface Feedback {
   id: number;
   book_id: number;
@@ -81,17 +116,9 @@ export interface FeedbackResponseData {
   };
 }
 
-export interface BookResponseData {
-  data: Book[];
-  meta: {
-    current_page: number;
-    from: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-  };
-}
-
+// ==========================
+// 🏷️ Category Related Types
+// ==========================
 export interface Category {
   id: number;
   name: string;
@@ -110,6 +137,92 @@ export interface CategoryResponseData {
   };
 }
 
+// ==========================
+// 🧾 Book Loan Related Types
+// ==========================
+export interface BookLoan {
+  id: number;
+  book_id: number;
+  user_id: number;
+  status: "pending" | "pre-approved" | "approved" | "rejected" | "returned";
+  requested_at: string;
+  approved_at: string | null;
+  due_date: string | null;
+  returned_at: string | null;
+  book: Partial<Book>;
+  user: Partial<User>;
+}
+
+export interface PaginationMeta {
+  current_page: number;
+  from: number;
+  last_page: number;
+  per_page: number;
+  to: number;
+  total: number;
+}
+
+export interface BookLoanResponse {
+  status: "success";
+  data: BookLoan[];
+  meta: PaginationMeta;
+}
+
+// ==========================
+// ⏳ Due Date Extension Types
+// ==========================
+export interface DueDateIncreaseRequest {
+  id: number;
+  newDueDate: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  bookLoan: BookLoan;
+  user: User;
+  createdAt: string;
+}
+
+export interface DueDateIncreaseRequestResponse {
+  status: "success";
+  data: DueDateIncreaseRequest[];
+  meta: PaginationMeta;
+}
+
+// ==========================
+// 🧮 Dashboard & Stock
+// ==========================
+export interface TopBorrowedBook {
+  id: number;
+  title: string;
+  author: string;
+  thumbnail: string | null;
+  totalBorrows: number;
+}
+
+export interface TopBorrowedBooks {
+  minCount: number | null;
+  maxCount: number | null;
+  data: TopBorrowedBook[];
+}
+
+export interface LastSevenDaysLoan {
+  min_count: number;
+  max_count: number;
+  data: Array<{
+    date: string;
+    count: number;
+  }>;
+}
+
+export interface DashboardStats {
+  total_books: number;
+  physical_books: number;
+  ebooks: number;
+  active_loans: number;
+  total_users: number;
+  top_borrowed_books: TopBorrowedBooks;
+  last_seven_days_loans: LastSevenDaysLoan;
+}
+
 export interface PhysicalStock {
   id: number;
   book_id: number;
@@ -117,43 +230,13 @@ export interface PhysicalStock {
   updated_at: string;
 }
 
-export interface BookLoan {
-  id: number;
-  user_id: number;
-  book_id: number;
-  status: "pending" | "approved" | "rejected" | "returned" | "overdue";
-  requested_at: string;
-  approved_at?: string;
-  due_date?: string;
-  returned_at?: string;
-  user?: User;
-  book?: Book;
+export interface StockUpdateResponse {
+  message: string;
+  data: {
+    current_stock: number;
+  };
 }
 
-export type LoginCredentials = {
-  email: string;
-  password: string;
-};
-
-export type ApiResponse<T> = {
-  data: T;
-  message?: string;
-  status: "success" | "error";
-};
-
-export interface DashboardStats {
-  totalUsers: number;
-  totalBooks: number;
-  currentLoans: number;
-  overdueBooks: number;
-  borrowingTrend: {
-    date: string;
-    count: number;
-  }[];
-  mostBorrowed: {
-    id: number;
-    title: string;
-    author: string;
-    count: number;
-  }[];
+export interface ActionResponse {
+  message: string;
 }

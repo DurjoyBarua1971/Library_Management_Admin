@@ -1,23 +1,25 @@
 import axios from "axios";
 import {
+  ActionResponse,
   ApiResponse,
   Book,
-  BookLoan,
+  BookLoanResponse,
   BookResponseData,
   Category,
   CategoryResponseData,
   CreateUserPayload,
   CreateUserResponse,
   DashboardStats,
+  DueDateIncreaseRequestResponse,
   FeedbackResponseData,
   GetUsersResponse,
   LoginCredentials,
-  PhysicalStock,
+  StockUpdateResponse,
   User,
   UserResponseData,
 } from "@/types";
 
-// This would be replaced with the actual API base URL
+// Axios Setup
 const API_BASE_URL = "http://libms.laravel-sail.site:8080/api";
 
 export const apiClient = axios.create({
@@ -28,7 +30,6 @@ export const apiClient = axios.create({
   },
 });
 
-// Add request interceptor to include auth token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("auth_token");
@@ -40,7 +41,10 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Auth APIs
+//
+// ====================== AUTH APIs ======================
+//
+
 export const loginUser = async (
   credentials: LoginCredentials
 ): Promise<{ access_token: string; user: User }> => {
@@ -53,7 +57,10 @@ export const logoutUser = async (): Promise<ApiResponse<null>> => {
   return response.data;
 };
 
-// User APIs
+//
+// ====================== USER APIs ======================
+//
+
 export const getUsers = async (
   page: number = 1,
   per_page: number = 10,
@@ -72,14 +79,14 @@ export const getUsers = async (
 export const createUser = async (
   payload: CreateUserPayload
 ): Promise<CreateUserResponse> => {
-  const response = await apiClient.post<CreateUserResponse>(
-    "/v1/users",
-    payload
-  );
+  const response = await apiClient.post<CreateUserResponse>("/v1/users", payload);
   return response.data;
 };
 
-// Book APIs
+//
+// ====================== BOOK APIs ======================
+//
+
 export const getBooks = async (
   page: number = 1,
   per_page: number = 10,
@@ -93,17 +100,6 @@ export const getBooks = async (
 
 export const getBook = async (id: number): Promise<ApiResponse<Book>> => {
   const response = await apiClient.get(`/v1/books/${id}`);
-  return response.data;
-};
-
-export const getFeedback = async (
-  bookId: number,
-  page: number,
-  per_page: number = 10
-): Promise<FeedbackResponseData> => {
-  const response = await apiClient.get(`v1/books/${bookId}/feedback`, {
-    params: { page, per_page },
-  });
   return response.data;
 };
 
@@ -143,7 +139,25 @@ export const uploadPdf = async (
   return response.data;
 };
 
-// Category APIs
+//
+// ====================== BOOK FEEDBACK ======================
+//
+
+export const getFeedback = async (
+  bookId: number,
+  page: number,
+  per_page: number = 10
+): Promise<FeedbackResponseData> => {
+  const response = await apiClient.get(`v1/books/${bookId}/feedback`, {
+    params: { page, per_page },
+  });
+  return response.data;
+};
+
+//
+// ====================== CATEGORY APIs ======================
+//
+
 export const getCategories = async (
   page: number = 1,
   per_page: number = 10
@@ -176,341 +190,92 @@ export const deleteCategory = async (
   return response.data;
 };
 
-// PhysicalStock APIs
-export const getPhysicalStocks = async (): Promise<
-  ApiResponse<PhysicalStock[]>
-> => {
-  if (process.env.NODE_ENV === "development") {
-    return Promise.resolve({
-      status: "success",
-      data: mockPhysicalStocks,
-    });
-  }
-
-  const response = await apiClient.get("/physical-stocks");
-  return response.data;
-};
+//
+// ====================== PHYSICAL STOCK ======================
+//
 
 export const updatePhysicalStock = async (
-  id: number,
+  bookId: number,
   quantity: number
-): Promise<ApiResponse<PhysicalStock>> => {
-  const response = await apiClient.put(`/physical-stocks/${id}`, { quantity });
+): Promise<StockUpdateResponse> => {
+  const response = await apiClient.put(`/v1/books/${bookId}/stock`, { quantity });
   return response.data;
 };
 
-// BookLoan APIs
+//
+// ====================== BOOK LOAN APIs ======================
+//
+
 export const getBookLoans = async (
-  status?: string
-): Promise<ApiResponse<BookLoan[]>> => {
-  if (process.env.NODE_ENV === "development") {
-    let loans = mockBookLoans;
-    if (status) {
-      loans = loans.filter((loan) => loan.status === status);
-    }
-    return Promise.resolve({
-      status: "success",
-      data: loans,
-    });
-  }
-
-  const response = await apiClient.get("/book-loans", {
-    params: status ? { status } : undefined,
+  page: number = 1,
+  perPage: number = 10,
+  status?: string,
+  dueDate?: string,
+  search?: string
+): Promise<BookLoanResponse> => {
+  const response = await apiClient.get('/v1/book-loans', {
+    params: {
+      page,
+      per_page: perPage,
+      status,
+      due_date: dueDate,
+      search,
+    },
   });
   return response.data;
 };
 
-export const approveBookLoan = async (
-  id: number,
-  dueDate: string
-): Promise<ApiResponse<BookLoan>> => {
-  const response = await apiClient.put(`/book-loans/${id}/approve`, {
-    due_date: dueDate,
+export const approveBookLoan = async (loanId: number): Promise<ActionResponse> => {
+  const response = await apiClient.put(`/v1/book-loans/${loanId}/approve`);
+  return response.data;
+};
+
+export const rejectBookLoan = async (loanId: number): Promise<ActionResponse> => {
+  const response = await apiClient.put(`/v1/book-loans/${loanId}/reject`);
+  return response.data;
+};
+
+export const distributeBookLoan = async (loanId: number): Promise<ActionResponse> => {
+  const response = await apiClient.put(`/v1/book-loans/${loanId}/distribute`);
+  return response.data;
+};
+
+export const returnBook = async (loanId: number): Promise<ActionResponse> => {
+  const response = await apiClient.put(`/v1/book-loans/${loanId}/return`);
+  return response.data;
+};
+
+//
+// ========== DUE DATE INCREASE REQUEST APIs ==========
+//
+
+export const getDueDateIncreaseRequests = async (
+  page: number = 1,
+  perPage: number = 10,
+  search?: string,
+  status?: 'pending' | 'approved' | 'rejected'
+): Promise<DueDateIncreaseRequestResponse> => {
+  const response = await apiClient.get('/v1/book-loans/due-date-increase-requests', {
+    params: {
+      page,
+      per_page: perPage,
+      search,
+      status,
+    },
   });
   return response.data;
 };
 
-export const rejectBookLoan = async (
-  id: number
-): Promise<ApiResponse<BookLoan>> => {
-  const response = await apiClient.put(`/book-loans/${id}/reject`);
+export const actionDueDateRequest = async (
+  requestId: number,
+  status: 'approved' | 'rejected'
+): Promise<ActionResponse> => {
+  const response = await apiClient.put(`/v1/book-loans/${requestId}/action-due-date-request/${status}`);
   return response.data;
 };
 
-export const returnBook = async (
-  id: number
-): Promise<ApiResponse<BookLoan>> => {
-  const response = await apiClient.put(`/book-loans/${id}/return`);
+
+export const getDashboardStats = async (): Promise<{ status: string; data: DashboardStats; message: string }> => {
+  const response = await apiClient.get('/v1/dashboard');
   return response.data;
-};
-
-export const extendDueDate = async (
-  id: number,
-  dueDate: string
-): Promise<ApiResponse<BookLoan>> => {
-  const response = await apiClient.put(`/book-loans/${id}/extend`, {
-    due_date: dueDate,
-  });
-  return response.data;
-};
-
-// Dashboard APIs
-export const getDashboardStats = async (): Promise<
-  ApiResponse<DashboardStats>
-> => {
-  if (process.env.NODE_ENV === "development") {
-    return Promise.resolve({
-      status: "success",
-      data: mockDashboardStats,
-    });
-  }
-
-  const response = await apiClient.get("/dashboard/stats");
-  return response.data;
-};
-
-// Mock data for development
-const mockUsers: User[] = [
-  {
-    id: 1,
-    name: "Admin User",
-    email: "admin@example.com",
-    role: "admin",
-    created_at: "2023-01-01T00:00:00Z",
-  },
-  {
-    id: 2,
-    name: "John Smith",
-    email: "john@example.com",
-    role: "user",
-    created_at: "2023-01-02T00:00:00Z",
-  },
-  {
-    id: 3,
-    name: "Jane Doe",
-    email: "jane@example.com",
-    role: "user",
-    created_at: "2023-01-03T00:00:00Z",
-  },
-];
-
-// const mockCategories: Category[] = [
-//   {
-//     id: 1,
-//     name: "Fiction",
-//     created_at: "2023-01-01T00:00:00Z",
-//   },
-//   {
-//     id: 2,
-//     name: "Non-Fiction",
-//     created_at: "2023-01-01T00:00:00Z",
-//   },
-//   {
-//     id: 3,
-//     name: "Science",
-//     created_at: "2023-01-01T00:00:00Z",
-//   },
-//   {
-//     id: 4,
-//     name: "History",
-//     created_at: "2023-01-01T00:00:00Z",
-//   },
-//   {
-//     id: 5,
-//     name: "Biography",
-//     created_at: "2023-01-01T00:00:00Z",
-//   },
-// ];
-
-const mockBooks: Book[] = [
-  {
-    id: 1,
-    title: "The Great Gatsby",
-    author: "F. Scott Fitzgerald",
-    description:
-      "A novel about the mysterious Jay Gatsby and his love for Daisy Buchanan.",
-    category_id: 1,
-    has_pdf: true,
-    has_physical: true,
-    pdf_url: "https://example.com/pdf/great-gatsby.pdf",
-    cover_url:
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=1287&auto=format&fit=crop",
-    created_at: "2023-01-01T00:00:00Z",
-  },
-  {
-    id: 2,
-    title: "Sapiens: A Brief History of Humankind",
-    author: "Yuval Noah Harari",
-    description:
-      "A book that explores the history of the human species from the Stone Age to the present day.",
-    category_id: 2,
-    has_pdf: true,
-    has_physical: false,
-    pdf_url: "https://example.com/pdf/sapiens.pdf",
-    cover_url:
-      "https://images.unsplash.com/photo-1589998059171-988d887df646?q=80&w=1352&auto=format&fit=crop",
-    created_at: "2023-01-02T00:00:00Z",
-  },
-  {
-    id: 3,
-    title: "To Kill a Mockingbird",
-    author: "Harper Lee",
-    description:
-      "A novel about racial injustice and the loss of innocence in the American South.",
-    category_id: 1,
-    has_pdf: false,
-    has_physical: true,
-    cover_url:
-      "https://images.unsplash.com/photo-1541963463532-d68292c34b19?q=80&w=1288&auto=format&fit=crop",
-    created_at: "2023-01-03T00:00:00Z",
-  },
-  {
-    id: 4,
-    title: "Brief Answers to the Big Questions",
-    author: "Stephen Hawking",
-    description:
-      "The final book from Stephen Hawking on the biggest questions facing humanity.",
-    category_id: 3,
-    has_pdf: true,
-    has_physical: true,
-    pdf_url: "https://example.com/pdf/brief-answers.pdf",
-    cover_url:
-      "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=1173&auto=format&fit=crop",
-    created_at: "2023-01-04T00:00:00Z",
-  },
-  {
-    id: 5,
-    title: "The Diary of a Young Girl",
-    author: "Anne Frank",
-    description:
-      "The diary kept by Anne Frank while she was in hiding for two years with her family during the Nazi occupation of the Netherlands.",
-    category_id: 4,
-    has_pdf: true,
-    has_physical: true,
-    pdf_url: "https://example.com/pdf/diary-young-girl.pdf",
-    cover_url:
-      "https://images.unsplash.com/photo-1515098506762-79e1384e9d8e?q=80&w=1171&auto=format&fit=crop",
-    created_at: "2023-01-05T00:00:00Z",
-  },
-];
-
-const mockPhysicalStocks: PhysicalStock[] = [
-  {
-    id: 1,
-    book_id: 1,
-    quantity: 5,
-    updated_at: "2023-01-01T00:00:00Z",
-  },
-  {
-    id: 2,
-    book_id: 3,
-    quantity: 3,
-    updated_at: "2023-01-03T00:00:00Z",
-  },
-  {
-    id: 3,
-    book_id: 4,
-    quantity: 2,
-    updated_at: "2023-01-04T00:00:00Z",
-  },
-  {
-    id: 4,
-    book_id: 5,
-    quantity: 4,
-    updated_at: "2023-01-05T00:00:00Z",
-  },
-];
-
-const mockBookLoans: BookLoan[] = [
-  {
-    id: 1,
-    user_id: 2,
-    book_id: 1,
-    status: "approved",
-    requested_at: "2023-02-01T00:00:00Z",
-    approved_at: "2023-02-02T00:00:00Z",
-    due_date: "2023-02-16T00:00:00Z",
-    user: mockUsers.find((u) => u.id === 2),
-    book: mockBooks.find((b) => b.id === 1),
-  },
-  {
-    id: 2,
-    user_id: 3,
-    book_id: 3,
-    status: "pending",
-    requested_at: "2023-02-05T00:00:00Z",
-    user: mockUsers.find((u) => u.id === 3),
-    book: mockBooks.find((b) => b.id === 3),
-  },
-  {
-    id: 3,
-    user_id: 2,
-    book_id: 4,
-    status: "overdue",
-    requested_at: "2023-01-10T00:00:00Z",
-    approved_at: "2023-01-11T00:00:00Z",
-    due_date: "2023-01-25T00:00:00Z",
-    user: mockUsers.find((u) => u.id === 2),
-    book: mockBooks.find((b) => b.id === 4),
-  },
-  {
-    id: 4,
-    user_id: 3,
-    book_id: 5,
-    status: "approved",
-    requested_at: "2023-02-10T00:00:00Z",
-    approved_at: "2023-02-11T00:00:00Z",
-    due_date: "2023-02-25T00:00:00Z",
-    user: mockUsers.find((u) => u.id === 3),
-    book: mockBooks.find((b) => b.id === 5),
-  },
-  {
-    id: 5,
-    user_id: 2,
-    book_id: 3,
-    status: "returned",
-    requested_at: "2023-01-15T00:00:00Z",
-    approved_at: "2023-01-16T00:00:00Z",
-    due_date: "2023-01-30T00:00:00Z",
-    returned_at: "2023-01-28T00:00:00Z",
-    user: mockUsers.find((u) => u.id === 2),
-    book: mockBooks.find((b) => b.id === 3),
-  },
-];
-
-const mockDashboardStats: DashboardStats = {
-  totalUsers: mockUsers.length,
-  totalBooks: mockBooks.length,
-  currentLoans: mockBookLoans.filter((loan) => loan.status === "approved")
-    .length,
-  overdueBooks: mockBookLoans.filter((loan) => loan.status === "overdue")
-    .length,
-  borrowingTrend: [
-    { date: "2023-01", count: 3 },
-    { date: "2023-02", count: 5 },
-    { date: "2023-03", count: 2 },
-    { date: "2023-04", count: 7 },
-    { date: "2023-05", count: 4 },
-    { date: "2023-06", count: 6 },
-  ],
-  mostBorrowed: [
-    {
-      id: 1,
-      title: "The Great Gatsby",
-      author: "F. Scott Fitzgerald",
-      count: 8,
-    },
-    {
-      id: 3,
-      title: "To Kill a Mockingbird",
-      author: "Harper Lee",
-      count: 6,
-    },
-    {
-      id: 5,
-      title: "The Diary of a Young Girl",
-      author: "Anne Frank",
-      count: 5,
-    },
-  ],
 };

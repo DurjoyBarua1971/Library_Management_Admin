@@ -69,7 +69,6 @@ const Categories = () => {
       try {
         setLoading(true);
         const response = await getCategories(currentPage);
-        console.log("Fetched categories:", response);
         setCategories(response.data);
         setPaginationMeta(response.meta);
       } catch (error) {

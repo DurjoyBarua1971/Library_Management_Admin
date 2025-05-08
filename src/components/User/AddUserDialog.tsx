@@ -17,17 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FormMessage } from '@/components/ui/form';
 
 interface AddUserDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void;
   userForm: CreateUserPayload;
-  setUserForm: (form: CreateUserPayload) => void;
   errors: Partial<Record<keyof CreateUserPayload, string>>;
   handleFieldChange: (field: keyof CreateUserPayload, value: string) => void;
-  isFormValid: () => boolean;
   submissionLoading: boolean;
 }
 
@@ -36,10 +33,8 @@ const AddUserDialog = ({
   onOpenChange,
   onSubmit,
   userForm,
-  setUserForm,
   errors,
   handleFieldChange,
-  isFormValid,
   submissionLoading,
 }: AddUserDialogProps) => (
   <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -57,7 +52,7 @@ const AddUserDialog = ({
             onChange={(e) => handleFieldChange('name', e.target.value)}
             placeholder="Enter user name"
           />
-          {errors.name && <FormMessage>{errors.name}</FormMessage>}
+          {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -68,7 +63,7 @@ const AddUserDialog = ({
             onChange={(e) => handleFieldChange('email', e.target.value)}
             placeholder="Enter email address"
           />
-          {errors.email && <FormMessage>{errors.email}</FormMessage>}
+          {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="role">Role</Label>
@@ -84,15 +79,44 @@ const AddUserDialog = ({
               <SelectItem value="admin">Admin</SelectItem>
             </SelectContent>
           </Select>
-          {errors.role && <FormMessage>{errors.role}</FormMessage>}
+          {errors.role && <p className="text-sm text-red-500">{errors.role}</p>}
         </div>
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)}>
           Cancel
         </Button>
-        <Button onClick={onSubmit} disabled={!isFormValid()}>
-          Add User
+        <Button
+          onClick={onSubmit}
+          disabled={submissionLoading || Object.keys(errors).length > 0}
+        >
+          {submissionLoading ? (
+            <span className="flex items-center">
+              <svg
+                className="animate-spin h-5 w-5 mr-2 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Adding...
+            </span>
+          ) : (
+            "Add User"
+          )}
         </Button>
       </DialogFooter>
     </DialogContent>

@@ -11,6 +11,7 @@ import {
 } from "@/components/User";
 
 const Users = () => {
+  const PER_PAGE = 10;
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [submissionLoading, setSubmissionLoading] = useState(false);
@@ -20,7 +21,7 @@ const Users = () => {
   const [paginationMeta, setPaginationMeta] = useState({
     current_page: 1,
     last_page: 1,
-    per_page: 10,
+    per_page: PER_PAGE,
     total: 0,
   });
   const [userForm, setUserForm] = useState<CreateUserPayload>({
@@ -39,24 +40,15 @@ const Users = () => {
     setErrors({});
   };
 
-  const isFormValid = (): boolean => {
-    return (
-      userForm.name.trim() &&
-      userForm.email.trim() &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email) &&
-      userForm.role !== undefined
-    );
-  };
-
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof CreateUserPayload, string>> = {};
-    if (!userForm.name.trim()) newErrors.name = "Name is required";
-    if (!userForm.email.trim()) {
+    if (!userForm?.name.trim()) newErrors.name = "Name is required";
+    if (!userForm?.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) {
       newErrors.email = "Please enter a valid email";
     }
-    if (!userForm.role) newErrors.role = "Role is required";
+    if (!userForm?.role) newErrors.role = "Role is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -87,7 +79,7 @@ const Users = () => {
   };
 
   useEffect(() => {
-    fetchUsers(currentPage, 10, debouncedSearchQuery);
+    fetchUsers(currentPage, PER_PAGE, debouncedSearchQuery);
   }, [currentPage, debouncedSearchQuery]);
 
   const handleSubmit = async () => {
@@ -96,15 +88,10 @@ const Users = () => {
     }
 
     try {
-      const payload: CreateUserPayload = {
-        name: userForm.name,
-        email: userForm.email,
-        role: userForm.role,
-      };
       setSubmissionLoading(true);
-      const response = await createUser(payload);
+      const response = await createUser(userForm);
       if (response.user) {
-        await fetchUsers(1, 10, debouncedSearchQuery);
+        await fetchUsers(1, PER_PAGE, debouncedSearchQuery);
         setCurrentPage(1);
         toast({
           title: "Success",
@@ -127,13 +114,7 @@ const Users = () => {
 
   const handleFieldChange = (field: keyof CreateUserPayload, value: string) => {
     setUserForm({ ...userForm, [field]: value });
-    if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
+    validateForm();
   };
 
   return (
@@ -155,10 +136,8 @@ const Users = () => {
         }}
         onSubmit={handleSubmit}
         userForm={userForm}
-        setUserForm={setUserForm}
         errors={errors}
         handleFieldChange={handleFieldChange}
-        isFormValid={isFormValid}
         submissionLoading={submissionLoading}
       />
     </div>
